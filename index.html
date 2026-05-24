@@ -100,14 +100,8 @@
   .meta-item { font-size: 0.78rem; color: var(--muted); }
   .meta-item span { color: var(--primary); font-weight: 600; }
 
-  /* TikTok section */
   .tiktok-section { margin: 16px 20px 0; }
   .tiktok-section h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); margin-bottom: 10px; }
-  .tiktok-embed-wrap {
-    border-radius: 12px; overflow: hidden;
-    background: #000; position: relative;
-  }
-  .tiktok-embed-wrap iframe { width: 100%; border: none; display: block; }
   .tiktok-open-btn {
     display: flex; align-items: center; justify-content: center; gap: 8px;
     background: #000; color: #fff; border: none; border-radius: 12px;
@@ -137,7 +131,6 @@
   .btn-edit { background: var(--primary-light); color: var(--primary); }
   .btn-del { background: #fff0f0; color: #d63031; }
 
-  /* Form */
   .img-upload-area {
     margin: 0 20px 12px; border: 2px dashed var(--border); border-radius: 12px;
     padding: 16px; text-align: center; cursor: pointer;
@@ -161,18 +154,28 @@
   .form-row { display: flex; gap: 10px; padding: 0 20px 12px; }
   .form-row .form-group { padding: 0; flex: 1; }
 
-  /* TikTok input */
   .tiktok-input-wrap { position: relative; }
   .tiktok-input-wrap input { padding-left: 40px !important; }
   .tt-input-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 1.1rem; pointer-events: none; }
   .tt-preview-box {
-    margin-top: 8px; background: #f7f7f7; border-radius: 10px;
+    margin-top: 8px; border-radius: 10px;
     padding: 10px 12px; display: none; align-items: center; gap: 10px;
   }
   .tt-preview-box.show { display: flex; }
-  .tt-preview-icon { font-size: 1.5rem; }
+  .tt-preview-box.ok { background: #e8f5e9; }
+  .tt-preview-box.err { background: #fff0f0; }
+  .tt-preview-icon { font-size: 1.3rem; }
   .tt-preview-text { font-size: 0.8rem; color: var(--muted); flex: 1; word-break: break-all; }
   .tt-clear { background: none; border: none; color: #d63031; cursor: pointer; font-size: 1rem; }
+
+  /* Toast thông báo */
+  .toast {
+    position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
+    background: #2d2d2d; color: #fff; padding: 10px 18px; border-radius: 50px;
+    font-size: 0.85rem; z-index: 999; opacity: 0;
+    transition: opacity 0.3s; pointer-events: none; white-space: nowrap;
+  }
+  .toast.show { opacity: 1; }
 
   .btn-save {
     margin: 8px 20px 0; width: calc(100% - 40px);
@@ -191,7 +194,7 @@
 <body>
 
 <div class="header">
-  <h1>🍳 Sổ Công Thức <span class="version-tag">v2</span></h1>
+  <h1>🍳 Sổ Công Thức <span class="version-tag">v2.1</span></h1>
   <p>Lưu lại kinh nghiệm nấu ăn của bạn</p>
 </div>
 
@@ -201,6 +204,7 @@
 <div class="cats" id="cats"></div>
 <div class="grid" id="grid"></div>
 <button class="fab" onclick="openForm()">＋</button>
+<div class="toast" id="toast"></div>
 
 <!-- VIEW MODAL -->
 <div class="overlay" id="viewOverlay" onclick="closeView(event)">
@@ -215,15 +219,12 @@
       <div class="meta-item">⏱ <span id="vTime"></span></div>
       <div class="meta-item">🏷 <span id="vCat"></span></div>
     </div>
-
-    <!-- TikTok -->
     <div class="tiktok-section" id="vTiktokSection" style="display:none">
       <h3>📱 Video TikTok hướng dẫn</h3>
       <a id="vTiktokBtn" class="tiktok-open-btn" href="#" target="_blank" rel="noopener">
         <span class="tt-icon">▶️</span> Xem video TikTok hướng dẫn
       </a>
     </div>
-
     <div class="section"><h3>Nguyên liệu</h3><ul class="ingredient-list" id="vIngredients"></ul></div>
     <div class="section"><h3>Cách làm</h3><ol class="steps-list" id="vSteps"></ol></div>
     <div class="section" id="vNoteSection"><h3>Ghi chú</h3><div class="note-box" id="vNote"></div></div>
@@ -243,7 +244,6 @@
       <button class="sheet-close" onclick="closeOverlay('formOverlay')">✕</button>
     </div>
 
-    <!-- Image -->
     <div class="form-group" style="padding:0 20px 4px;">
       <div class="label-row">
         <label>Ảnh món ăn</label>
@@ -276,19 +276,22 @@
       </div>
     </div>
 
-    <!-- TikTok link -->
+    <!-- TikTok link - FIXED -->
     <div class="form-group">
       <label>🎵 Link TikTok (tuỳ chọn)</label>
       <div class="tiktok-input-wrap">
         <span class="tt-input-icon">🎵</span>
-        <input type="url" id="fTiktok" placeholder="https://www.tiktok.com/@.../video/..." oninput="previewTiktok()">
+        <input type="text" id="fTiktok"
+          placeholder="Paste link TikTok vào đây..."
+          oninput="onTiktokInput()"
+          onpaste="handleTiktokPaste(event)">
       </div>
       <div class="tt-preview-box" id="ttPreview">
-        <span class="tt-preview-icon">✅</span>
+        <span class="tt-preview-icon" id="ttPreviewIcon"></span>
         <span class="tt-preview-text" id="ttPreviewText"></span>
         <button class="tt-clear" onclick="clearTiktok()">✕</button>
       </div>
-      <div class="hint">Paste link video TikTok hướng dẫn món này vào đây</div>
+      <div class="hint">💡 Paste link TikTok — app sẽ tự làm sạch link cho bạn</div>
     </div>
 
     <div class="form-group">
@@ -332,7 +335,20 @@ function load() {
 }
 function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(recipes)); }
 
-// Normalise TikTok URL
+// =============================================
+// FIX: Trích xuất link TikTok từ text bị chèn chữ
+// =============================================
+function extractTiktokUrl(raw) {
+  if (!raw) return '';
+  // Tìm URL bắt đầu bằng http/https trong chuỗi bất kỳ
+  const match = raw.match(/https?:\/\/[^\s"'<>]+/);
+  if (!match) return '';
+  let url = match[0];
+  // Loại bỏ ký tự thừa ở cuối (dấu chấm, phẩy, ngoặc...)
+  url = url.replace(/[.,;!?)\]}>'"]+$/, '');
+  return url;
+}
+
 function normTiktok(url) {
   if (!url) return '';
   url = url.trim();
@@ -343,6 +359,65 @@ function normTiktok(url) {
 function isTiktokUrl(url) {
   return url && (url.includes('tiktok.com') || url.includes('vm.tiktok.com'));
 }
+
+// Xử lý khi paste vào ô TikTok
+function handleTiktokPaste(e) {
+  e.preventDefault();
+  const pasted = (e.clipboardData || window.clipboardData).getData('text');
+  const clean = extractTiktokUrl(pasted);
+  const input = document.getElementById('fTiktok');
+  input.value = clean || pasted; // nếu không tìm được URL thì giữ nguyên
+  setTimeout(() => { updateTiktokPreview(); }, 0);
+  if (clean && clean !== pasted) showToast('✅ Link đã được làm sạch tự động!');
+}
+
+// Xử lý khi gõ tay
+function onTiktokInput() {
+  const val = document.getElementById('fTiktok').value;
+  // Nếu có chứa http và có chữ thừa trước/sau → tự clean
+  if (val.includes('http')) {
+    const clean = extractTiktokUrl(val);
+    if (clean && clean !== val) {
+      document.getElementById('fTiktok').value = clean;
+      showToast('✅ Link đã được làm sạch tự động!');
+    }
+  }
+  updateTiktokPreview();
+}
+
+function updateTiktokPreview() {
+  const val = document.getElementById('fTiktok').value.trim();
+  const box = document.getElementById('ttPreview');
+  const icon = document.getElementById('ttPreviewIcon');
+  const txt = document.getElementById('ttPreviewText');
+  if (!val) { box.classList.remove('show','ok','err'); return; }
+  box.classList.add('show');
+  if (isTiktokUrl(val)) {
+    box.classList.add('ok'); box.classList.remove('err');
+    icon.textContent = '✅';
+    txt.textContent = val.length > 55 ? val.slice(0,55)+'...' : val;
+    txt.style.color = '#2e7d32';
+  } else {
+    box.classList.add('err'); box.classList.remove('ok');
+    icon.textContent = '⚠️';
+    txt.textContent = 'Không nhận ra link TikTok — hãy kiểm tra lại';
+    txt.style.color = '#d63031';
+  }
+}
+
+function clearTiktok() {
+  document.getElementById('fTiktok').value = '';
+  const box = document.getElementById('ttPreview');
+  box.classList.remove('show','ok','err');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// =============================================
 
 function render() {
   const q = document.getElementById('search').value.toLowerCase();
@@ -355,9 +430,7 @@ function render() {
   g.innerHTML = list.map(r => `
     <div class="card" onclick="viewRecipe('${r.id}')">
       <div class="card-thumb">
-        ${r.img
-          ? `<img src="${r.img}" alt="${r.name}">`
-          : `<div class="emoji-ph">${r.emoji||'🍽️'}</div>`}
+        ${r.img ? `<img src="${r.img}" alt="${r.name}">` : `<div class="emoji-ph">${r.emoji||'🍽️'}</div>`}
         ${isTiktokUrl(r.tiktok) ? `<div class="tiktok-badge">🎵 TikTok</div>` : ''}
       </div>
       <div class="card-body">
@@ -378,35 +451,22 @@ function setCat(c) { activeCat = c; renderCats(); render(); }
 function viewRecipe(id) {
   const r = recipes.find(x=>x.id===id); if (!r) return;
   currentId = id;
-
-  // Hero
   const hero = document.getElementById('vHero');
-  if (r.img) {
-    hero.innerHTML = `<div style="width:100%;aspect-ratio:16/9;overflow:hidden;"><img src="${r.img}" style="width:100%;height:100%;object-fit:cover;"></div>`;
-  } else {
-    hero.innerHTML = `<div style="width:100%;aspect-ratio:16/9;background:var(--primary-light);display:flex;align-items:center;justify-content:center;font-size:4rem;">${r.emoji||'🍽️'}</div>`;
-  }
-
+  hero.innerHTML = r.img
+    ? `<div style="width:100%;aspect-ratio:16/9;overflow:hidden;"><img src="${r.img}" style="width:100%;height:100%;object-fit:cover;"></div>`
+    : `<div style="width:100%;aspect-ratio:16/9;background:var(--primary-light);display:flex;align-items:center;justify-content:center;font-size:4rem;">${r.emoji||'🍽️'}</div>`;
   document.getElementById('vName').textContent = r.name;
   document.getElementById('vTime').textContent = r.time||'—';
   document.getElementById('vCat').textContent = r.cat;
   document.getElementById('vIngredients').innerHTML = r.ingredients.map(i=>`<li>${i}</li>`).join('');
   document.getElementById('vSteps').innerHTML = r.steps.map(s=>`<li>${s}</li>`).join('');
-
-  // TikTok
   const ttSec = document.getElementById('vTiktokSection');
   const ttBtn = document.getElementById('vTiktokBtn');
-  if (isTiktokUrl(r.tiktok)) {
-    ttSec.style.display = 'block';
-    ttBtn.href = normTiktok(r.tiktok);
-  } else {
-    ttSec.style.display = 'none';
-  }
-
+  if (isTiktokUrl(r.tiktok)) { ttSec.style.display='block'; ttBtn.href=r.tiktok; }
+  else ttSec.style.display='none';
   const ns = document.getElementById('vNoteSection');
-  if (r.note) { document.getElementById('vNote').textContent = r.note; ns.style.display=''; }
+  if (r.note) { document.getElementById('vNote').textContent=r.note; ns.style.display=''; }
   else ns.style.display='none';
-
   document.getElementById('viewOverlay').classList.add('open');
 }
 
@@ -414,7 +474,6 @@ function closeOverlay(id) { document.getElementById(id).classList.remove('open')
 function closeView(e) { if (e.target.id==='viewOverlay') closeOverlay('viewOverlay'); }
 function closeForm(e) { if (e.target.id==='formOverlay') closeOverlay('formOverlay'); }
 
-// Image
 function triggerUpload() { document.getElementById('fImgFile').click(); }
 function handleImg(e) {
   const file = e.target.files[0]; if (!file) return;
@@ -437,23 +496,6 @@ function removeImg() {
   document.getElementById('fImgFile').value = '';
 }
 
-// TikTok input preview
-function previewTiktok() {
-  const val = document.getElementById('fTiktok').value.trim();
-  const box = document.getElementById('ttPreview');
-  const txt = document.getElementById('ttPreviewText');
-  if (isTiktokUrl(val)) {
-    box.classList.add('show');
-    txt.textContent = val.length > 50 ? val.slice(0,50)+'...' : val;
-  } else {
-    box.classList.remove('show');
-  }
-}
-function clearTiktok() {
-  document.getElementById('fTiktok').value = '';
-  document.getElementById('ttPreview').classList.remove('show');
-}
-
 function openForm(id=null) {
   editId = id; pendingImgB64 = null;
   document.getElementById('formTitle').textContent = id ? '✏️ Sửa công thức' : '➕ Thêm món mới';
@@ -467,7 +509,7 @@ function openForm(id=null) {
   document.getElementById('fNote').value = r ? (r.note||'') : '';
   document.getElementById('fImgFile').value = '';
   if (r && r.img) { pendingImgB64 = r.img; showPreview(r.img); } else removeImg();
-  previewTiktok();
+  updateTiktokPreview();
   document.getElementById('formOverlay').classList.add('open');
 }
 
@@ -491,13 +533,14 @@ function saveRecipe() {
     img: pendingImgB64||null, emoji:'🍽️',
     name, cat: document.getElementById('fCat').value,
     time: document.getElementById('fTime').value.trim(),
-    tiktok: isTiktokUrl(tiktokRaw) ? normTiktok(tiktokRaw) : '',
+    tiktok: isTiktokUrl(tiktokRaw) ? tiktokRaw : '',
     ingredients, steps,
     note: document.getElementById('fNote').value.trim()
   };
   if (editId) { const i = recipes.findIndex(r=>r.id===editId); recipes[i]=data; }
   else recipes.unshift(data);
   save(); render(); closeOverlay('formOverlay');
+  showToast('✅ Đã lưu công thức!');
 }
 
 load(); renderCats(); render();
