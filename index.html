@@ -4,517 +4,418 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sổ Công Thức</title>
+
 <style>
-  :root {
-    --primary: #e8654a; --primary-light: #fff0ed;
-    --bg: #faf9f7; --card: #fff; --text: #2d2d2d;
-    --muted: #888; --border: #eee; --radius: 16px;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
-
-  /* SETUP */
-  .setup-screen { position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; padding: 24px; }
-  .setup-screen.hidden { display: none; }
-  .setup-logo { font-size: 3.5rem; margin-bottom: 8px; }
-  .setup-screen h2 { font-size: 1.3rem; font-weight: 700; margin-bottom: 4px; }
-  .setup-screen > p { font-size: 0.85rem; color: var(--muted); margin-bottom: 24px; text-align: center; line-height: 1.6; }
-  .setup-card { background: #fff; border-radius: 20px; padding: 20px; width: 100%; max-width: 400px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-  .setup-card label { font-size: 0.8rem; font-weight: 600; color: var(--muted); display: block; margin-bottom: 6px; }
-  .setup-card input { width: 100%; padding: 10px 14px; border-radius: 10px; border: 1.5px solid var(--border); font-size: 0.9rem; margin-bottom: 14px; outline: none; font-family: monospace; }
-  .setup-card input:focus { border-color: var(--primary); }
-  .btn-connect { width: 100%; padding: 13px; background: var(--primary); color: #fff; border: none; border-radius: 12px; font-size: 1rem; font-weight: 700; cursor: pointer; }
-  .setup-hint { font-size: 0.78rem; color: var(--muted); margin-top: 14px; text-align: center; line-height: 1.7; }
-  .setup-hint a { color: var(--primary); text-decoration: none; font-weight: 600; }
-  .setup-steps { background: #f7f7f7; border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; font-size: 0.82rem; line-height: 2; color: var(--text); }
-  .setup-steps b { color: var(--primary); }
-
-  /* LOADING */
-  .loading-screen { position: fixed; inset: 0; background: var(--primary); display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; z-index: 9998; }
-  .loading-screen.hidden { display: none; }
-  .loading-screen .ico { font-size: 3rem; margin-bottom: 16px; }
-  .loading-screen p { font-size: 1rem; opacity: 0.9; }
-  .spinner { width: 32px; height: 32px; border: 3px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; margin-top: 20px; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* HEADER */
-  .header { background: var(--primary); color: #fff; padding: 16px 20px 12px; position: sticky; top: 0; z-index: 100; }
-  .header-row { display: flex; align-items: center; gap: 8px; }
-  .header h1 { font-size: 1.25rem; font-weight: 700; flex: 1; }
-  .btn-cfg { background: rgba(255,255,255,0.2); border: none; color: #fff; border-radius: 8px; padding: 4px 10px; font-size: 0.75rem; cursor: pointer; }
-  .sync-status { font-size: 0.72rem; margin-top: 5px; display: flex; align-items: center; gap: 5px; opacity: 0.92; }
-  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: #4caf50; flex-shrink: 0; }
-  .sync-dot.syncing { background: #fff; animation: pulse 1s infinite; }
-  .sync-dot.err { background: #ff5252; }
-  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.3} }
-
-  .search-wrap { padding: 14px 16px 8px; }
-  .search-wrap input { width: 100%; padding: 10px 16px; border-radius: 50px; border: 1.5px solid var(--border); font-size: 0.95rem; background: #fff; outline: none; }
-  .search-wrap input:focus { border-color: var(--primary); }
-
-  .cats { display: flex; gap: 8px; padding: 0 16px 12px; overflow-x: auto; scrollbar-width: none; }
-  .cats::-webkit-scrollbar { display: none; }
-  .cat-btn { white-space: nowrap; padding: 6px 14px; border-radius: 50px; border: 1.5px solid var(--border); background: #fff; font-size: 0.82rem; cursor: pointer; }
-  .cat-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
-
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 16px 100px; }
-  .card { background: var(--card); border-radius: var(--radius); box-shadow: 0 2px 8px rgba(0,0,0,0.06); cursor: pointer; overflow: hidden; transition: transform 0.15s; }
-  .card:active { transform: scale(0.97); }
-  .card-thumb { width: 100%; aspect-ratio: 4/3; overflow: hidden; background: var(--primary-light); position: relative; }
-  .card-thumb img { width: 100%; height: 100%; object-fit: cover; }
-  .emoji-ph { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 3rem; }
-  .tiktok-badge { position: absolute; bottom: 6px; right: 6px; background: #000; color: #fff; border-radius: 6px; font-size: 0.65rem; padding: 2px 6px; }
-  .card-body { padding: 10px 12px 12px; }
-  .card-name { font-weight: 700; font-size: 0.9rem; line-height: 1.3; }
-  .card-cat { font-size: 0.72rem; color: var(--muted); margin-top: 3px; }
-  .card-time { font-size: 0.72rem; color: var(--primary); margin-top: 4px; }
-
-  .empty { text-align: center; padding: 60px 20px; color: var(--muted); grid-column: span 2; }
-  .empty div { font-size: 3rem; margin-bottom: 10px; }
-
-  .fab { position: fixed; bottom: 24px; right: 20px; background: var(--primary); color: #fff; width: 56px; height: 56px; border-radius: 50%; font-size: 1.8rem; border: none; cursor: pointer; box-shadow: 0 4px 16px rgba(232,101,74,0.4); display: flex; align-items: center; justify-content: center; z-index: 200; }
-
-  .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 300; align-items: flex-end; justify-content: center; }
-  .overlay.open { display: flex; }
-  .sheet { background: #fff; border-radius: 24px 24px 0 0; width: 100%; max-width: 480px; max-height: 92vh; overflow-y: auto; padding: 0 0 40px; animation: slideUp 0.3s ease; }
-  @keyframes slideUp { from{transform:translateY(100%)}to{transform:translateY(0)} }
-  .sheet-handle { width: 40px; height: 4px; background: #ddd; border-radius: 4px; margin: 12px auto 0; }
-  .sheet-header { padding: 14px 20px 0; display: flex; align-items: flex-start; gap: 10px; }
-  .sheet-title { font-size: 1.15rem; font-weight: 700; flex: 1; }
-  .sheet-close { background: #f3f3f3; border: none; border-radius: 50%; width: 32px; height: 32px; font-size: 1rem; cursor: pointer; }
-  .sheet-meta { display: flex; gap: 16px; padding: 10px 20px 0; flex-wrap: wrap; }
-  .meta-item { font-size: 0.78rem; color: var(--muted); }
-  .meta-item span { color: var(--primary); font-weight: 600; }
-
-  .tiktok-section { margin: 16px 20px 0; }
-  .tiktok-section h3 { font-size: 0.85rem; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
-  .tiktok-open-btn { display: flex; align-items: center; justify-content: center; gap: 8px; background: #000; color: #fff; border: none; border-radius: 12px; padding: 12px; width: 100%; font-size: 0.92rem; font-weight: 600; text-decoration: none; }
-
-  .section { padding: 16px 20px 0; }
-  .section h3 { font-size: 0.85rem; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
-  .ingredient-list { list-style: none; }
-  .ingredient-list li { padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 0.92rem; display: flex; gap: 8px; }
-  .ingredient-list li::before { content:"•"; color:var(--primary); font-weight:700; }
-  .steps-list { list-style: none; counter-reset: step; }
-  .steps-list li { counter-increment:step; padding:8px 0 8px 36px; border-bottom:1px solid var(--border); font-size:0.92rem; position:relative; line-height:1.5; }
-  .steps-list li::before { content:counter(step); position:absolute; left:0; background:var(--primary); color:#fff; width:24px; height:24px; border-radius:50%; font-size:0.75rem; font-weight:700; display:flex; align-items:center; justify-content:center; top:8px; }
-  .note-box { background:#fffbe6; border-left:3px solid #f5c842; border-radius:8px; padding:12px; font-size:0.88rem; line-height:1.5; }
-  .sheet-actions { display:flex; gap:10px; padding:20px 20px 0; }
-  .btn-edit,.btn-del { flex:1; padding:11px; border-radius:12px; border:none; font-size:0.9rem; font-weight:600; cursor:pointer; }
-  .btn-edit { background:var(--primary-light); color:var(--primary); }
-  .btn-del { background:#fff0f0; color:#d63031; }
-
-  .img-upload-area { margin:0 20px 12px; border:2px dashed var(--border); border-radius:12px; padding:16px; text-align:center; cursor:pointer; position:relative; overflow:hidden; }
-  .img-upload-area input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; }
-  .img-preview { width:100%; max-height:160px; object-fit:cover; border-radius:8px; display:none; }
-  .img-upload-hint { color:var(--muted); font-size:0.85rem; }
-  .img-upload-hint span { font-size:1.8rem; display:block; margin-bottom:4px; }
-
-  .form-group { padding:0 20px 12px; }
-  .form-group label { display:block; font-size:0.8rem; font-weight:600; color:var(--muted); margin-bottom:6px; }
-  .form-group input,.form-group textarea,.form-group select { width:100%; padding:10px 14px; border-radius:10px; border:1.5px solid var(--border); font-size:0.92rem; font-family:inherit; outline:none; background:#fafafa; }
-  .form-group input:focus,.form-group textarea:focus { border-color:var(--primary); background:#fff; }
-  .form-group textarea { resize:vertical; min-height:80px; }
-  .form-row { display:flex; gap:10px; padding:0 20px 12px; }
-  .form-row .form-group { padding:0; flex:1; }
-
-  .tiktok-input-wrap { position:relative; }
-  .tiktok-input-wrap input { padding-left:40px !important; }
-  .tt-input-icon { position:absolute; left:12px; top:50%; transform:translateY(-50%); pointer-events:none; }
-  .tt-preview-box { margin-top:8px; border-radius:10px; padding:10px 12px; display:none; align-items:center; gap:10px; }
-  .tt-preview-box.show { display:flex; }
-  .tt-preview-box.ok { background:#e8f5e9; }
-  .tt-preview-box.err { background:#fff0f0; }
-  .tt-preview-text { font-size:0.8rem; flex:1; word-break:break-all; }
-  .tt-clear { background:none; border:none; color:#d63031; cursor:pointer; }
-
-  .toast { position:fixed; bottom:90px; left:50%; transform:translateX(-50%); background:#2d2d2d; color:#fff; padding:10px 18px; border-radius:50px; font-size:0.85rem; z-index:999; opacity:0; transition:opacity 0.3s; pointer-events:none; white-space:nowrap; }
-  .toast.show { opacity:1; }
-
-  .btn-save { margin:8px 20px 0; width:calc(100% - 40px); padding:13px; background:var(--primary); color:#fff; border:none; border-radius:12px; font-size:1rem; font-weight:700; cursor:pointer; }
-  .form-title-row { display:flex; align-items:center; padding:14px 20px 8px; }
-  .form-title { font-size:1.1rem; font-weight:700; flex:1; }
-  .hint { font-size:0.75rem; color:var(--muted); margin-top:4px; }
-  .label-row { display:flex; justify-content:space-between; align-items:center; }
-  .btn-rm-img { font-size:0.75rem; color:#d63031; background:none; border:none; cursor:pointer; }
-  .version-tag { font-size:0.65rem; background:rgba(255,255,255,0.25); padding:2px 7px; border-radius:10px; margin-left:6px; }
+body{
+  margin:0;
+  font-family:Arial,sans-serif;
+  background:#faf7f2;
+  color:#2d2d2d;
+}
+header{
+  background:#e8654a;
+  color:white;
+  padding:18px;
+  text-align:center;
+}
+header h1{
+  margin:0;
+}
+#status{
+  margin-top:6px;
+  font-size:14px;
+}
+main{
+  max-width:900px;
+  margin:auto;
+  padding:16px;
+}
+.box{
+  background:white;
+  padding:16px;
+  border-radius:16px;
+  box-shadow:0 3px 10px rgba(0,0,0,.08);
+  margin-bottom:20px;
+}
+input,select,textarea{
+  width:100%;
+  box-sizing:border-box;
+  padding:11px;
+  margin-bottom:10px;
+  border:1px solid #ddd;
+  border-radius:10px;
+  font-size:15px;
+}
+textarea{
+  min-height:80px;
+}
+button{
+  border:0;
+  background:#e8654a;
+  color:white;
+  padding:10px 14px;
+  border-radius:10px;
+  font-weight:bold;
+  cursor:pointer;
+}
+button.gray{
+  background:#777;
+}
+button.red{
+  background:#d63031;
+}
+button.blue{
+  background:#0984e3;
+}
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+  gap:14px;
+}
+.card{
+  background:white;
+  padding:14px;
+  border-radius:16px;
+  box-shadow:0 3px 10px rgba(0,0,0,.08);
+}
+.card h3{
+  margin:0 0 6px;
+}
+.card small{
+  color:#777;
+}
+.actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-top:10px;
+}
+.hidden{
+  display:none!important;
+}
+.modal{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.45);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:18px;
+}
+.modal-content{
+  background:white;
+  width:100%;
+  max-width:520px;
+  max-height:85vh;
+  overflow:auto;
+  border-radius:18px;
+  padding:20px;
+  position:relative;
+}
+.close{
+  position:absolute;
+  right:12px;
+  top:12px;
+  background:#999;
+}
+ul,ol{
+  padding-left:22px;
+}
 </style>
 </head>
+
 <body>
 
-<!-- SETUP -->
-<div class="setup-screen" id="setupScreen">
-  <div class="setup-logo">🍳</div>
-  <h2>Sổ Công Thức</h2>
-  <p>Đồng bộ công thức trên mọi thiết bị<br>qua JSONBin.io (miễn phí)</p>
-  <div class="setup-card">
-    <div class="setup-steps">
-      <b>1.</b> Vào <a href="https://jsonbin.io" target="_blank" style="color:#e8654a">jsonbin.io</a> → Sign Up miễn phí<br>
-      <b>2.</b> Vào <b>API Keys</b> → bấm <b>Create Access Key</b><br>
-      <b>3.</b> Copy key dán vào ô bên dưới
-    </div>
-    <label>🔑 JSONBin API Key</label>
-    <input type="password" id="cfgKey" placeholder="$2a$10$xxxxxxxxxxxxxxxx">
-    <button class="btn-connect" onclick="connect()">🚀 Kết nối & bắt đầu</button>
-    <div class="setup-hint">
-      Key lưu trên thiết bị của bạn, không gửi đi đâu khác ngoài JSONBin.<br>
-      <a href="https://jsonbin.io/login" target="_blank">👉 Đăng nhập JSONBin</a>
-    </div>
-  </div>
-</div>
+<header>
+  <h1>🍳 Sổ Công Thức</h1>
+  <p>GitHub Pages + JSONBin</p>
+  <div id="status">Đang tải dữ liệu...</div>
+</header>
 
-<!-- LOADING -->
-<div class="loading-screen hidden" id="loadingScreen">
-  <div class="ico">🍳</div>
-  <p id="loadingText">Đang tải công thức...</p>
-  <div class="spinner"></div>
-</div>
+<main>
+  <section class="box">
+    <h2 id="formTitle">Thêm món mới</h2>
 
-<!-- HEADER -->
-<div class="header">
-  <div class="header-row">
-    <h1>🍳 Sổ Công Thức <span class="version-tag">v5</span></h1>
-    <button class="btn-cfg" onclick="resetCfg()">⚙️ Đổi key</button>
-  </div>
-  <div class="sync-status">
-    <span class="sync-dot" id="syncDot"></span>
-    <span id="syncText">Chưa kết nối</span>
-  </div>
-</div>
+    <input id="name" placeholder="Tên món ăn">
 
-<div class="search-wrap"><input type="text" id="search" placeholder="🔍 Tìm món ăn..." oninput="render()"></div>
-<div class="cats" id="cats"></div>
-<div class="grid" id="grid"></div>
-<button class="fab" onclick="openForm()">＋</button>
-<div class="toast" id="toast"></div>
+    <select id="cat">
+      <option>Món chính</option>
+      <option>Món phụ</option>
+      <option>Canh</option>
+      <option>Tráng miệng</option>
+      <option>Đồ uống</option>
+      <option>Ăn sáng</option>
+      <option>Khác</option>
+    </select>
 
-<!-- VIEW -->
-<div class="overlay" id="viewOverlay" onclick="closeView(event)">
-  <div class="sheet">
-    <div class="sheet-handle"></div>
-    <div id="vHero"></div>
-    <div class="sheet-header">
-      <div class="sheet-title" id="vName"></div>
-      <button class="sheet-close" onclick="closeOverlay('viewOverlay')">✕</button>
-    </div>
-    <div class="sheet-meta">
-      <div class="meta-item">⏱ <span id="vTime"></span></div>
-      <div class="meta-item">🏷 <span id="vCat"></span></div>
-    </div>
-    <div class="tiktok-section" id="vTiktokSection" style="display:none">
-      <h3>📱 Video TikTok</h3>
-      <a id="vTiktokBtn" class="tiktok-open-btn" href="#" target="_blank" rel="noopener">▶️ Xem video TikTok hướng dẫn</a>
-    </div>
-    <div class="section"><h3>Nguyên liệu</h3><ul class="ingredient-list" id="vIngredients"></ul></div>
-    <div class="section"><h3>Cách làm</h3><ol class="steps-list" id="vSteps"></ol></div>
-    <div class="section" id="vNoteSection"><h3>Ghi chú</h3><div class="note-box" id="vNote"></div></div>
-    <div class="sheet-actions">
-      <button class="btn-edit" onclick="editCurrent()">✏️ Sửa</button>
-      <button class="btn-del" onclick="deleteCurrent()">🗑 Xóa</button>
-    </div>
-  </div>
-</div>
+    <input id="time" placeholder="Thời gian nấu, ví dụ: 30 phút">
 
-<!-- FORM -->
-<div class="overlay" id="formOverlay" onclick="closeForm(event)">
-  <div class="sheet">
-    <div class="sheet-handle"></div>
-    <div class="form-title-row">
-      <div class="form-title" id="formTitle"></div>
-      <button class="sheet-close" onclick="closeOverlay('formOverlay')">✕</button>
+    <textarea id="ingredients" placeholder="Nguyên liệu, mỗi dòng một nguyên liệu"></textarea>
+
+    <textarea id="steps" placeholder="Cách làm, mỗi dòng một bước"></textarea>
+
+    <textarea id="note" placeholder="Ghi chú"></textarea>
+
+    <input id="tiktok" placeholder="Link TikTok nếu có">
+
+    <div class="actions">
+      <button onclick="saveRecipe()" id="saveBtn">💾 Lưu công thức</button>
+      <button onclick="cancelEdit()" id="cancelBtn" class="gray hidden">Hủy sửa</button>
     </div>
-    <div class="form-group" style="padding:0 20px 4px">
-      <div class="label-row">
-        <label>Ảnh món ăn</label>
-        <button class="btn-rm-img" id="btnRmImg" onclick="removeImg()" style="display:none">✕ Xóa</button>
-      </div>
-    </div>
-    <div class="img-upload-area" onclick="triggerUpload()">
-      <input type="file" id="fImgFile" accept="image/*" onchange="handleImg(event)">
-      <img id="imgPreview" class="img-preview">
-      <div class="img-upload-hint" id="uploadHint"><span>📷</span>Bấm để chọn ảnh</div>
-    </div>
-    <div class="form-group"><label>Tên món ăn *</label><input type="text" id="fName" placeholder="VD: Phở bò"></div>
-    <div class="form-row">
-      <div class="form-group">
-        <label>Danh mục</label>
-        <select id="fCat"><option>Món chính</option><option>Món phụ</option><option>Canh</option><option>Tráng miệng</option><option>Đồ uống</option><option>Ăn sáng</option><option>Khác</option></select>
-      </div>
-      <div class="form-group"><label>Thời gian</label><input type="text" id="fTime" placeholder="30 phút"></div>
-    </div>
-    <div class="form-group">
-      <label>🎵 Link TikTok (tuỳ chọn)</label>
-      <div class="tiktok-input-wrap">
-        <span class="tt-input-icon">🎵</span>
-        <input type="text" id="fTiktok" placeholder="Paste link TikTok..." oninput="onTiktokInput()" onpaste="handleTiktokPaste(event)">
-      </div>
-      <div class="tt-preview-box" id="ttPreview">
-        <span id="ttIcon"></span>
-        <span class="tt-preview-text" id="ttText"></span>
-        <button class="tt-clear" onclick="clearTiktok()">✕</button>
-      </div>
-    </div>
-    <div class="form-group">
-      <label>Nguyên liệu *</label>
-      <textarea id="fIngredients" placeholder="Mỗi nguyên liệu một dòng"></textarea>
-      <div class="hint">Mỗi nguyên liệu một dòng</div>
-    </div>
-    <div class="form-group">
-      <label>Cách làm *</label>
-      <textarea id="fSteps" placeholder="Mỗi bước một dòng" style="min-height:100px"></textarea>
-      <div class="hint">Mỗi bước một dòng</div>
-    </div>
-    <div class="form-group"><label>Ghi chú (tuỳ chọn)</label><textarea id="fNote" placeholder="Mẹo, biến tấu..."></textarea></div>
-    <button class="btn-save" onclick="saveRecipe()">💾 Lưu & Đồng bộ ☁️</button>
+  </section>
+
+  <section>
+    <h2>Danh sách món ăn</h2>
+    <input id="search" placeholder="🔍 Tìm món ăn..." oninput="render()">
+    <div id="list" class="grid"></div>
+  </section>
+</main>
+
+<div id="modal" class="modal hidden">
+  <div class="modal-content">
+    <button class="close" onclick="closeModal()">×</button>
+    <div id="detail"></div>
   </div>
 </div>
 
 <script>
-const CFG_KEY = 'jsonbin_cfg_v5';
-const BIN_BASE = 'https://api.jsonbin.io/v3';
-const CATS = ['Tất cả','Món chính','Món phụ','Canh','Tráng miệng','Đồ uống','Ăn sáng','Khác'];
-const SAMPLES = [
-  {id:'s1',img:null,emoji:'🍜',name:'Phở bò',cat:'Món chính',time:'2 giờ',tiktok:'',
-   ingredients:['500g xương bò','300g thịt bò tái','Bánh phở tươi','Rau thơm, giá, chanh, ớt'],
-   steps:['Nướng hành tây và gừng','Hầm xương 1.5 giờ hớt bọt','Nêm gia vị chan lên phở'],note:'Hầm lửa nhỏ để nước trong.'},
-  {id:'s2',img:null,emoji:'🥗',name:'Gỏi cuốn',cat:'Món phụ',time:'30 phút',tiktok:'',
-   ingredients:['200g tôm luộc','Bánh tráng, bún, rau'],
-   steps:['Luộc tôm thái mỏng','Nhúng bánh tráng cuộn nhân','Pha nước chấm hoisin'],note:''}
-];
+const BIN_ID = "6a1300736877513b27c573c3";
+const API_KEY = "$2a$10$76a8f5/muH5kGdXMgz7aF.ladaeCMuVEtfKrH3Y26gnR0xN4Ebuzi";
 
-let apiKey = '', binId = '', recipes = [], currentId = null, editId = null, pendingImgB64 = null, activeCat = 'Tất cả';
+const URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+let recipes = [];
+let editingId = null;
 
-// ── JSONBIN API ───────────────────────────────────────
-function ghd() { return { 'X-Master-Key': apiKey, 'Content-Type': 'application/json' }; }
+const statusEl = document.getElementById("status");
+const listEl = document.getElementById("list");
 
-async function binCreate(data) {
-  const res = await fetch(`${BIN_BASE}/b`, {
-    method: 'POST',
-    headers: { ...ghd(), 'X-Bin-Name': 'so-cong-thuc', 'X-Bin-Private': 'true' },
-    body: JSON.stringify({ recipes: data })
-  });
-  if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Không tạo được bin'); }
-  const json = await res.json();
-  return json.metadata.id;
+function headers(){
+  return {
+    "Content-Type":"application/json",
+    "X-Master-Key":API_KEY
+  };
 }
 
-async function binRead() {
-  const res = await fetch(`${BIN_BASE}/b/${binId}/latest`, { headers: ghd() });
-  if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Không đọc được dữ liệu'); }
-  const json = await res.json();
-  return json.record.recipes || [];
-}
+async function loadRecipes(){
+  try{
+    statusEl.textContent = "Đang tải từ JSONBin...";
 
-async function binWrite(data) {
-  const res = await fetch(`${BIN_BASE}/b/${binId}`, {
-    method: 'PUT', headers: ghd(), body: JSON.stringify({ recipes: data })
-  });
-  if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Không lưu được dữ liệu'); }
-}
+    const res = await fetch(`${URL}/latest`, {
+      method:"GET",
+      headers:headers()
+    });
 
-// ── SETUP ─────────────────────────────────────────────
-async function connect() {
-  const key = document.getElementById('cfgKey').value.trim();
-  if (!key) { showToast('⚠️ Vui lòng nhập API Key!'); return; }
-  apiKey = key;
-  document.getElementById('setupScreen').classList.add('hidden');
-  showLoading('Đang kết nối JSONBin...');
-  try {
-    // Tạo bin mới hoặc load bin đã có
-    const savedBinId = localStorage.getItem('jsonbin_binid');
-    if (savedBinId) {
-      binId = savedBinId;
-      recipes = await binRead();
-      setSyncStatus('ok', '☁️ JSONBin — đồng bộ mọi thiết bị');
-    } else {
-      updateLoadingText('Tạo kho dữ liệu lần đầu...');
-      recipes = SAMPLES;
-      binId = await binCreate(recipes);
-      localStorage.setItem('jsonbin_binid', binId);
-      setSyncStatus('ok', '✅ Đã tạo kho dữ liệu mới!');
-    }
-    localStorage.setItem(CFG_KEY, apiKey);
-  } catch(e) {
-    setSyncStatus('err', '❌ ' + e.message);
-    showToast('❌ ' + e.message);
-    recipes = [];
-  }
-  hideLoading();
-  renderCats(); render();
-}
+    if(!res.ok) throw new Error("Không đọc được JSONBin");
 
-function resetCfg() {
-  if (!confirm('Đổi API Key? (Dữ liệu cũ vẫn còn trên JSONBin)')) return;
-  localStorage.removeItem(CFG_KEY);
-  localStorage.removeItem('jsonbin_binid');
-  location.reload();
-}
+    const data = await res.json();
+    recipes = data.record.recipes || [];
 
-// ── SYNC ─────────────────────────────────────────────
-function setSyncStatus(state, msg) {
-  document.getElementById('syncDot').className = 'sync-dot' + (state==='syncing'?' syncing':state==='err'?' err':'');
-  document.getElementById('syncText').textContent = msg;
-}
-async function syncSave() {
-  setSyncStatus('syncing', 'Đang lưu...');
-  try {
-    await binWrite(recipes);
-    setSyncStatus('ok', '☁️ JSONBin — đồng bộ mọi thiết bị');
-    showToast('✅ Đã lưu & đồng bộ!');
-  } catch(e) {
-    setSyncStatus('err', '❌ ' + e.message);
-    showToast('❌ Lỗi: ' + e.message);
+    render();
+    statusEl.textContent = "✅ Đã đồng bộ JSONBin";
+  }catch(err){
+    console.error(err);
+    statusEl.textContent = "❌ Lỗi tải dữ liệu";
+    listEl.innerHTML = "<p>Kiểm tra lại BIN_ID hoặc API_KEY.</p>";
   }
 }
 
-function showLoading(msg) { document.getElementById('loadingText').textContent=msg; document.getElementById('loadingScreen').classList.remove('hidden'); }
-function hideLoading() { document.getElementById('loadingScreen').classList.add('hidden'); }
-function updateLoadingText(t) { document.getElementById('loadingText').textContent=t; }
+async function uploadRecipes(){
+  try{
+    statusEl.textContent = "Đang lưu lên JSONBin...";
 
-// ── TIKTOK ────────────────────────────────────────────
-function extractTiktokUrl(r) { const m=r.match(/https?:\/\/[^\s"'<>]+/); return m?m[0].replace(/[.,;!?)\]}>'"]+$/,''):''; }
-function isTiktokUrl(u) { return u&&(u.includes('tiktok.com')||u.includes('vm.tiktok.com')); }
-function handleTiktokPaste(e) {
-  e.preventDefault();
-  const p=(e.clipboardData||window.clipboardData).getData('text');
-  const c=extractTiktokUrl(p);
-  document.getElementById('fTiktok').value=c||p;
-  setTimeout(updateTiktokPreview,0);
-  if(c&&c!==p) showToast('✅ Link đã được làm sạch!');
-}
-function onTiktokInput() {
-  const v=document.getElementById('fTiktok').value;
-  if(v.includes('http')){const c=extractTiktokUrl(v);if(c&&c!==v){document.getElementById('fTiktok').value=c;showToast('✅ Link làm sạch!');}}
-  updateTiktokPreview();
-}
-function updateTiktokPreview() {
-  const v=document.getElementById('fTiktok').value.trim();
-  const box=document.getElementById('ttPreview');
-  if(!v){box.classList.remove('show','ok','err');return;}
-  box.classList.add('show');
-  if(isTiktokUrl(v)){
-    box.className='tt-preview-box show ok';
-    document.getElementById('ttIcon').textContent='✅';
-    document.getElementById('ttText').textContent=v.length>50?v.slice(0,50)+'...':v;
-  } else {
-    box.className='tt-preview-box show err';
-    document.getElementById('ttIcon').textContent='⚠️';
-    document.getElementById('ttText').textContent='Không nhận ra link TikTok';
+    const res = await fetch(URL, {
+      method:"PUT",
+      headers:headers(),
+      body:JSON.stringify({ recipes })
+    });
+
+    if(!res.ok) throw new Error("Không lưu được JSONBin");
+
+    statusEl.textContent = "✅ Đã lưu thành công";
+  }catch(err){
+    console.error(err);
+    statusEl.textContent = "❌ Lỗi lưu dữ liệu";
+    alert("Không lưu được. Kiểm tra API Key hoặc Bin ID.");
   }
 }
-function clearTiktok(){document.getElementById('fTiktok').value='';document.getElementById('ttPreview').className='tt-preview-box';}
 
-// ── UI ────────────────────────────────────────────────
-function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
+async function saveRecipe(){
+  const name = document.getElementById("name").value.trim();
+  const cat = document.getElementById("cat").value;
+  const time = document.getElementById("time").value.trim();
+  const note = document.getElementById("note").value.trim();
+  const tiktok = document.getElementById("tiktok").value.trim();
+
+  const ingredients = document.getElementById("ingredients").value
+    .split("\n")
+    .map(x=>x.trim())
+    .filter(Boolean);
+
+  const steps = document.getElementById("steps").value
+    .split("\n")
+    .map(x=>x.trim())
+    .filter(Boolean);
+
+  if(!name){
+    alert("Bạn chưa nhập tên món.");
+    return;
+  }
+
+  if(ingredients.length === 0){
+    alert("Bạn chưa nhập nguyên liệu.");
+    return;
+  }
+
+  if(steps.length === 0){
+    alert("Bạn chưa nhập cách làm.");
+    return;
+  }
+
+  const item = {
+    id: editingId || "r" + Date.now(),
+    name,
+    cat,
+    time,
+    ingredients,
+    steps,
+    note,
+    tiktok
+  };
+
+  if(editingId){
+    recipes = recipes.map(r => r.id === editingId ? item : r);
+  }else{
+    recipes.unshift(item);
+  }
+
+  await uploadRecipes();
+  clearForm();
+  render();
+}
+
 function render(){
-  const q=document.getElementById('search').value.toLowerCase();
-  const list=recipes.filter(r=>(activeCat==='Tất cả'||r.cat===activeCat)&&(!q||r.name.toLowerCase().includes(q)));
-  const g=document.getElementById('grid');
-  if(!list.length){g.innerHTML=`<div class="empty"><div>🍽️</div><p>Chưa có món nào</p></div>`;return;}
-  g.innerHTML=list.map(r=>`
-    <div class="card" onclick="viewRecipe('${r.id}')">
-      <div class="card-thumb">
-        ${r.img?`<img src="${r.img}">`:`<div class="emoji-ph">${r.emoji||'🍽️'}</div>`}
-        ${isTiktokUrl(r.tiktok)?`<div class="tiktok-badge">🎵</div>`:''}
+  const keyword = document.getElementById("search").value.toLowerCase();
+
+  const filtered = recipes.filter(r =>
+    r.name.toLowerCase().includes(keyword)
+  );
+
+  if(filtered.length === 0){
+    listEl.innerHTML = "<p>Chưa có món nào.</p>";
+    return;
+  }
+
+  listEl.innerHTML = "";
+
+  filtered.forEach(r=>{
+    const div = document.createElement("div");
+    div.className = "card";
+
+    div.innerHTML = `
+      <h3>${safe(r.name)}</h3>
+      <small>${safe(r.cat || "Khác")}</small>
+      <p>⏱ ${safe(r.time || "Không ghi")}</p>
+      <div class="actions">
+        <button onclick="viewRecipe('${r.id}')">Xem</button>
+        <button class="blue" onclick="editRecipe('${r.id}')">Sửa</button>
+        <button class="red" onclick="deleteRecipe('${r.id}')">Xóa</button>
       </div>
-      <div class="card-body">
-        <div class="card-name">${r.name}</div>
-        <div class="card-cat">${r.cat}</div>
-        ${r.time?`<div class="card-time">⏱ ${r.time}</div>`:''}
-      </div>
-    </div>`).join('');
+    `;
+
+    listEl.appendChild(div);
+  });
 }
-function renderCats(){document.getElementById('cats').innerHTML=CATS.map(c=>`<button class="cat-btn ${c===activeCat?'active':''}" onclick="setCat('${c}')">${c}</button>`).join('');}
-function setCat(c){activeCat=c;renderCats();render();}
 
 function viewRecipe(id){
-  const r=recipes.find(x=>x.id===id);if(!r)return;
-  currentId=id;
-  document.getElementById('vHero').innerHTML=r.img
-    ?`<div style="width:100%;aspect-ratio:16/9;overflow:hidden"><img src="${r.img}" style="width:100%;height:100%;object-fit:cover"></div>`
-    :`<div style="width:100%;aspect-ratio:16/9;background:var(--primary-light);display:flex;align-items:center;justify-content:center;font-size:4rem">${r.emoji||'🍽️'}</div>`;
-  document.getElementById('vName').textContent=r.name;
-  document.getElementById('vTime').textContent=r.time||'—';
-  document.getElementById('vCat').textContent=r.cat;
-  document.getElementById('vIngredients').innerHTML=r.ingredients.map(i=>`<li>${i}</li>`).join('');
-  document.getElementById('vSteps').innerHTML=r.steps.map(s=>`<li>${s}</li>`).join('');
-  const tt=document.getElementById('vTiktokSection');
-  if(isTiktokUrl(r.tiktok)){tt.style.display='block';document.getElementById('vTiktokBtn').href=r.tiktok;}else tt.style.display='none';
-  const ns=document.getElementById('vNoteSection');
-  if(r.note){document.getElementById('vNote').textContent=r.note;ns.style.display='';}else ns.style.display='none';
-  document.getElementById('viewOverlay').classList.add('open');
+  const r = recipes.find(x=>x.id===id);
+  if(!r) return;
+
+  document.getElementById("detail").innerHTML = `
+    <h2>${safe(r.name)}</h2>
+    <p><b>Danh mục:</b> ${safe(r.cat)}</p>
+    <p><b>Thời gian:</b> ${safe(r.time || "Không ghi")}</p>
+
+    <h3>Nguyên liệu</h3>
+    <ul>${(r.ingredients||[]).map(x=>`<li>${safe(x)}</li>`).join("")}</ul>
+
+    <h3>Cách làm</h3>
+    <ol>${(r.steps||[]).map(x=>`<li>${safe(x)}</li>`).join("")}</ol>
+
+    ${r.note ? `<h3>Ghi chú</h3><p>${safe(r.note)}</p>` : ""}
+
+    ${r.tiktok ? `<h3>TikTok</h3><p><a href="${safe(r.tiktok)}" target="_blank">Mở video</a></p>` : ""}
+  `;
+
+  document.getElementById("modal").classList.remove("hidden");
 }
 
-function closeOverlay(id){document.getElementById(id).classList.remove('open');}
-function closeView(e){if(e.target.id==='viewOverlay')closeOverlay('viewOverlay');}
-function closeForm(e){if(e.target.id==='formOverlay')closeOverlay('formOverlay');}
+function editRecipe(id){
+  const r = recipes.find(x=>x.id===id);
+  if(!r) return;
 
-function triggerUpload(){document.getElementById('fImgFile').click();}
-function handleImg(e){
-  const f=e.target.files[0];if(!f)return;
-  const fr=new FileReader();fr.onload=ev=>{pendingImgB64=ev.target.result;showPreview(pendingImgB64);};fr.readAsDataURL(f);
-}
-function showPreview(src){
-  document.getElementById('imgPreview').src=src;document.getElementById('imgPreview').style.display='block';
-  document.getElementById('uploadHint').style.display='none';document.getElementById('btnRmImg').style.display='inline';
-}
-function removeImg(){
-  pendingImgB64=null;document.getElementById('imgPreview').style.display='none';
-  document.getElementById('imgPreview').src='';document.getElementById('uploadHint').style.display='block';
-  document.getElementById('btnRmImg').style.display='none';document.getElementById('fImgFile').value='';
-}
+  editingId = id;
 
-function openForm(id=null){
-  editId=id;pendingImgB64=null;
-  document.getElementById('formTitle').textContent=id?'✏️ Sửa công thức':'➕ Thêm món mới';
-  const r=id?recipes.find(x=>x.id===id):null;
-  document.getElementById('fName').value=r?r.name:'';
-  document.getElementById('fCat').value=r?r.cat:'Món chính';
-  document.getElementById('fTime').value=r?r.time:'';
-  document.getElementById('fTiktok').value=r?(r.tiktok||''):'';
-  document.getElementById('fIngredients').value=r?r.ingredients.join('\n'):'';
-  document.getElementById('fSteps').value=r?r.steps.join('\n'):'';
-  document.getElementById('fNote').value=r?(r.note||''):'';
-  document.getElementById('fImgFile').value='';
-  if(r&&r.img){pendingImgB64=r.img;showPreview(r.img);}else removeImg();
-  updateTiktokPreview();
-  document.getElementById('formOverlay').classList.add('open');
+  document.getElementById("formTitle").textContent = "Sửa công thức";
+  document.getElementById("saveBtn").textContent = "💾 Cập nhật";
+  document.getElementById("cancelBtn").classList.remove("hidden");
+
+  document.getElementById("name").value = r.name || "";
+  document.getElementById("cat").value = r.cat || "Món chính";
+  document.getElementById("time").value = r.time || "";
+  document.getElementById("ingredients").value = (r.ingredients||[]).join("\n");
+  document.getElementById("steps").value = (r.steps||[]).join("\n");
+  document.getElementById("note").value = r.note || "";
+  document.getElementById("tiktok").value = r.tiktok || "";
+
+  window.scrollTo({top:0, behavior:"smooth"});
 }
 
-function editCurrent(){closeOverlay('viewOverlay');openForm(currentId);}
-async function deleteCurrent(){
-  if(!confirm('Xóa món này?'))return;
-  recipes=recipes.filter(r=>r.id!==currentId);
-  await syncSave();render();closeOverlay('viewOverlay');
-}
-async function saveRecipe(){
-  const name=document.getElementById('fName').value.trim();
-  if(!name){showToast('⚠️ Nhập tên món!');return;}
-  const ing=document.getElementById('fIngredients').value.split('\n').map(s=>s.trim()).filter(Boolean);
-  const stp=document.getElementById('fSteps').value.split('\n').map(s=>s.trim()).filter(Boolean);
-  if(!ing.length){showToast('⚠️ Nhập nguyên liệu!');return;}
-  if(!stp.length){showToast('⚠️ Nhập cách làm!');return;}
-  const tt=document.getElementById('fTiktok').value.trim();
-  const data={id:editId||('r'+Date.now()),img:pendingImgB64||null,emoji:'🍽️',
-    name,cat:document.getElementById('fCat').value,time:document.getElementById('fTime').value.trim(),
-    tiktok:isTiktokUrl(tt)?tt:'',ingredients:ing,steps:stp,note:document.getElementById('fNote').value.trim()};
-  if(editId){const i=recipes.findIndex(r=>r.id===editId);recipes[i]=data;}else recipes.unshift(data);
-  await syncSave();render();closeOverlay('formOverlay');
+async function deleteRecipe(id){
+  const r = recipes.find(x=>x.id===id);
+  if(!r) return;
+
+  if(!confirm(`Xóa món "${r.name}" không?`)) return;
+
+  recipes = recipes.filter(x=>x.id!==id);
+  await uploadRecipes();
+  render();
 }
 
-// ── START ─────────────────────────────────────────────
-const savedKey = localStorage.getItem(CFG_KEY);
-const savedBin = localStorage.getItem('jsonbin_binid');
-if (savedKey) {
-  apiKey = savedKey;
-  document.getElementById('setupScreen').classList.add('hidden');
-  if (savedBin) binId = savedBin;
-  showLoading('Đang tải công thức...');
-  binRead().then(data => { recipes = data; setSyncStatus('ok','☁️ JSONBin — đồng bộ mọi thiết bị'); hideLoading(); renderCats(); render(); })
-           .catch(e => { setSyncStatus('err','❌ '+e.message); hideLoading(); recipes=[]; renderCats(); render(); });
-} else {
-  document.getElementById('setupScreen').classList.remove('hidden');
+function cancelEdit(){
+  clearForm();
 }
+
+function clearForm(){
+  editingId = null;
+
+  document.getElementById("formTitle").textContent = "Thêm món mới";
+  document.getElementById("saveBtn").textContent = "💾 Lưu công thức";
+  document.getElementById("cancelBtn").classList.add("hidden");
+
+  document.getElementById("name").value = "";
+  document.getElementById("cat").value = "Món chính";
+  document.getElementById("time").value = "";
+  document.getElementById("ingredients").value = "";
+  document.getElementById("steps").value = "";
+  document.getElementById("note").value = "";
+  document.getElementById("tiktok").value = "";
+}
+
+function closeModal(){
+  document.getElementById("modal").classList.add("hidden");
+}
+
+function safe(text){
+  return String(text || "")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+}
+
+loadRecipes();
 </script>
+
 </body>
 </html>
