@@ -1,421 +1,442 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sổ Công Thức</title>
-
-<style>
-body{
-  margin:0;
-  font-family:Arial,sans-serif;
-  background:#faf7f2;
-  color:#2d2d2d;
-}
-header{
-  background:#e8654a;
-  color:white;
-  padding:18px;
-  text-align:center;
-}
-header h1{
-  margin:0;
-}
-#status{
-  margin-top:6px;
-  font-size:14px;
-}
-main{
-  max-width:900px;
-  margin:auto;
-  padding:16px;
-}
-.box{
-  background:white;
-  padding:16px;
-  border-radius:16px;
-  box-shadow:0 3px 10px rgba(0,0,0,.08);
-  margin-bottom:20px;
-}
-input,select,textarea{
-  width:100%;
-  box-sizing:border-box;
-  padding:11px;
-  margin-bottom:10px;
-  border:1px solid #ddd;
-  border-radius:10px;
-  font-size:15px;
-}
-textarea{
-  min-height:80px;
-}
-button{
-  border:0;
-  background:#e8654a;
-  color:white;
-  padding:10px 14px;
-  border-radius:10px;
-  font-weight:bold;
-  cursor:pointer;
-}
-button.gray{
-  background:#777;
-}
-button.red{
-  background:#d63031;
-}
-button.blue{
-  background:#0984e3;
-}
-.grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
-  gap:14px;
-}
-.card{
-  background:white;
-  padding:14px;
-  border-radius:16px;
-  box-shadow:0 3px 10px rgba(0,0,0,.08);
-}
-.card h3{
-  margin:0 0 6px;
-}
-.card small{
-  color:#777;
-}
-.actions{
-  display:flex;
-  gap:8px;
-  flex-wrap:wrap;
-  margin-top:10px;
-}
-.hidden{
-  display:none!important;
-}
-.modal{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,.45);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding:18px;
-}
-.modal-content{
-  background:white;
-  width:100%;
-  max-width:520px;
-  max-height:85vh;
-  overflow:auto;
-  border-radius:18px;
-  padding:20px;
-  position:relative;
-}
-.close{
-  position:absolute;
-  right:12px;
-  top:12px;
-  background:#999;
-}
-ul,ol{
-  padding-left:22px;
-}
-</style>
-</head>
-
-<body>
-
-<header>
-  <h1>🍳 Sổ Công Thức</h1>
-  <p>GitHub Pages + JSONBin</p>
-  <div id="status">Đang tải dữ liệu...</div>
-</header>
-
-<main>
-  <section class="box">
-    <h2 id="formTitle">Thêm món mới</h2>
-
-    <input id="name" placeholder="Tên món ăn">
-
-    <select id="cat">
-      <option>Món chính</option>
-      <option>Món phụ</option>
-      <option>Canh</option>
-      <option>Tráng miệng</option>
-      <option>Đồ uống</option>
-      <option>Ăn sáng</option>
-      <option>Khác</option>
-    </select>
-
-    <input id="time" placeholder="Thời gian nấu, ví dụ: 30 phút">
-
-    <textarea id="ingredients" placeholder="Nguyên liệu, mỗi dòng một nguyên liệu"></textarea>
-
-    <textarea id="steps" placeholder="Cách làm, mỗi dòng một bước"></textarea>
-
-    <textarea id="note" placeholder="Ghi chú"></textarea>
-
-    <input id="tiktok" placeholder="Link TikTok nếu có">
-
-    <div class="actions">
-      <button onclick="saveRecipe()" id="saveBtn">💾 Lưu công thức</button>
-      <button onclick="cancelEdit()" id="cancelBtn" class="gray hidden">Hủy sửa</button>
-    </div>
-  </section>
-
-  <section>
-    <h2>Danh sách món ăn</h2>
-    <input id="search" placeholder="🔍 Tìm món ăn..." oninput="render()">
-    <div id="list" class="grid"></div>
-  </section>
-</main>
-
-<div id="modal" class="modal hidden">
-  <div class="modal-content">
-    <button class="close" onclick="closeModal()">×</button>
-    <div id="detail"></div>
-  </div>
-</div>
-
 <script>
 const BIN_ID = "6a1300736877513b27c573c3";
-const API_KEY = "$2a$10$NHGUMMCjo/r18txeFCVRQuY6DLtyUE0SmgDT1eQcV03xuCMw/c.Ie";
+const API_KEY = "DAN_API_KEY_CUA_BAN_VAO_DAY";
+const BIN_BASE = "https://api.jsonbin.io/v3";
 
-const URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+const CATS = ["Tất cả","Món chính","Món phụ","Canh","Tráng miệng","Đồ uống","Ăn sáng","Khác"];
+
 let recipes = [];
-let editingId = null;
+let currentId = null;
+let editId = null;
+let pendingImgB64 = null;
+let activeCat = "Tất cả";
 
-const statusEl = document.getElementById("status");
-const listEl = document.getElementById("list");
-
-function headers(){
+function ghd() {
   return {
-    "Content-Type":"application/json",
-    "X-Master-Key":API_KEY
+    "X-Master-Key": API_KEY,
+    "Content-Type": "application/json"
   };
 }
 
-async function loadRecipes(){
-  try{
-    statusEl.textContent = "Đang tải từ JSONBin...";
+// ===== JSONBIN =====
+async function binRead() {
+  const res = await fetch(`${BIN_BASE}/b/${BIN_ID}/latest`, {
+    method: "GET",
+    headers: ghd()
+  });
 
-    const res = await fetch(`${URL}/latest`, {
-      method:"GET",
-      headers:headers()
-    });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error(e.message || "Không đọc được dữ liệu JSONBin");
+  }
 
-    if(!res.ok) throw new Error("Không đọc được JSONBin");
+  const json = await res.json();
+  return json.record.recipes || [];
+}
 
-    const data = await res.json();
-    recipes = data.record.recipes || [];
+async function binWrite(data) {
+  const res = await fetch(`${BIN_BASE}/b/${BIN_ID}`, {
+    method: "PUT",
+    headers: ghd(),
+    body: JSON.stringify({ recipes: data })
+  });
 
-    render();
-    statusEl.textContent = "✅ Đã đồng bộ JSONBin";
-  }catch(err){
-    console.error(err);
-    statusEl.textContent = "❌ Lỗi tải dữ liệu";
-    listEl.innerHTML = "<p>Kiểm tra lại BIN_ID hoặc API_KEY.</p>";
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error(e.message || "Không lưu được dữ liệu JSONBin");
   }
 }
 
-async function uploadRecipes(){
-  try{
-    statusEl.textContent = "Đang lưu lên JSONBin...";
+// ===== START =====
+async function startApp() {
+  document.getElementById("setupScreen").classList.add("hidden");
+  showLoading("Đang tải công thức...");
 
-    const res = await fetch(URL, {
-      method:"PUT",
-      headers:headers(),
-      body:JSON.stringify({ recipes })
-    });
-
-    if(!res.ok) throw new Error("Không lưu được JSONBin");
-
-    statusEl.textContent = "✅ Đã lưu thành công";
-  }catch(err){
-    console.error(err);
-    statusEl.textContent = "❌ Lỗi lưu dữ liệu";
-    alert("Không lưu được. Kiểm tra API Key hoặc Bin ID.");
-  }
-}
-
-async function saveRecipe(){
-  const name = document.getElementById("name").value.trim();
-  const cat = document.getElementById("cat").value;
-  const time = document.getElementById("time").value.trim();
-  const note = document.getElementById("note").value.trim();
-  const tiktok = document.getElementById("tiktok").value.trim();
-
-  const ingredients = document.getElementById("ingredients").value
-    .split("\n")
-    .map(x=>x.trim())
-    .filter(Boolean);
-
-  const steps = document.getElementById("steps").value
-    .split("\n")
-    .map(x=>x.trim())
-    .filter(Boolean);
-
-  if(!name){
-    alert("Bạn chưa nhập tên món.");
-    return;
+  try {
+    recipes = await binRead();
+    setSyncStatus("ok", "☁️ JSONBin — đã đồng bộ");
+  } catch (e) {
+    recipes = [];
+    setSyncStatus("err", "❌ " + e.message);
+    showToast("❌ " + e.message);
   }
 
-  if(ingredients.length === 0){
-    alert("Bạn chưa nhập nguyên liệu.");
-    return;
-  }
-
-  if(steps.length === 0){
-    alert("Bạn chưa nhập cách làm.");
-    return;
-  }
-
-  const item = {
-    id: editingId || "r" + Date.now(),
-    name,
-    cat,
-    time,
-    ingredients,
-    steps,
-    note,
-    tiktok
-  };
-
-  if(editingId){
-    recipes = recipes.map(r => r.id === editingId ? item : r);
-  }else{
-    recipes.unshift(item);
-  }
-
-  await uploadRecipes();
-  clearForm();
+  hideLoading();
+  renderCats();
   render();
 }
 
-function render(){
-  const keyword = document.getElementById("search").value.toLowerCase();
+function resetCfg() {
+  loadRecipesAgain();
+}
 
-  const filtered = recipes.filter(r =>
-    r.name.toLowerCase().includes(keyword)
+async function loadRecipesAgain() {
+  showLoading("Đang tải lại dữ liệu...");
+  try {
+    recipes = await binRead();
+    setSyncStatus("ok", "☁️ JSONBin — đã tải lại dữ liệu");
+    showToast("✅ Đã tải lại!");
+  } catch (e) {
+    setSyncStatus("err", "❌ " + e.message);
+    showToast("❌ " + e.message);
+  }
+  hideLoading();
+  render();
+}
+
+// ===== SYNC =====
+function setSyncStatus(state, msg) {
+  const dot = document.getElementById("syncDot");
+  const text = document.getElementById("syncText");
+
+  dot.className =
+    "sync-dot" +
+    (state === "syncing" ? " syncing" : state === "err" ? " err" : "");
+
+  text.textContent = msg;
+}
+
+async function syncSave() {
+  setSyncStatus("syncing", "Đang lưu...");
+
+  try {
+    await binWrite(recipes);
+    setSyncStatus("ok", "☁️ JSONBin — đã lưu & đồng bộ");
+    showToast("✅ Đã lưu & đồng bộ!");
+  } catch (e) {
+    setSyncStatus("err", "❌ " + e.message);
+    showToast("❌ Lỗi: " + e.message);
+  }
+}
+
+function showLoading(msg) {
+  document.getElementById("loadingText").textContent = msg;
+  document.getElementById("loadingScreen").classList.remove("hidden");
+}
+
+function hideLoading() {
+  document.getElementById("loadingScreen").classList.add("hidden");
+}
+
+// ===== TOAST =====
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 2800);
+}
+
+// ===== TIKTOK =====
+function extractTiktokUrl(r) {
+  const m = r.match(/https?:\/\/[^\s"'<>]+/);
+  return m ? m[0].replace(/[.,;!?)\]}>'"]+$/,"") : "";
+}
+
+function isTiktokUrl(u) {
+  return u && (u.includes("tiktok.com") || u.includes("vm.tiktok.com"));
+}
+
+function handleTiktokPaste(e) {
+  e.preventDefault();
+  const p = (e.clipboardData || window.clipboardData).getData("text");
+  const c = extractTiktokUrl(p);
+  document.getElementById("fTiktok").value = c || p;
+  setTimeout(updateTiktokPreview, 0);
+  if (c && c !== p) showToast("✅ Link đã được làm sạch!");
+}
+
+function onTiktokInput() {
+  const input = document.getElementById("fTiktok");
+  const v = input.value;
+
+  if (v.includes("http")) {
+    const c = extractTiktokUrl(v);
+    if (c && c !== v) {
+      input.value = c;
+      showToast("✅ Link làm sạch!");
+    }
+  }
+
+  updateTiktokPreview();
+}
+
+function updateTiktokPreview() {
+  const v = document.getElementById("fTiktok").value.trim();
+  const box = document.getElementById("ttPreview");
+
+  if (!v) {
+    box.classList.remove("show","ok","err");
+    return;
+  }
+
+  box.classList.add("show");
+
+  if (isTiktokUrl(v)) {
+    box.className = "tt-preview-box show ok";
+    document.getElementById("ttIcon").textContent = "✅";
+    document.getElementById("ttText").textContent =
+      v.length > 50 ? v.slice(0, 50) + "..." : v;
+  } else {
+    box.className = "tt-preview-box show err";
+    document.getElementById("ttIcon").textContent = "⚠️";
+    document.getElementById("ttText").textContent = "Không nhận ra link TikTok";
+  }
+}
+
+function clearTiktok() {
+  document.getElementById("fTiktok").value = "";
+  document.getElementById("ttPreview").className = "tt-preview-box";
+}
+
+// ===== RENDER =====
+function renderCats() {
+  document.getElementById("cats").innerHTML = CATS.map(c => `
+    <button class="cat-btn ${c === activeCat ? "active" : ""}" onclick="setCat('${c}')">${c}</button>
+  `).join("");
+}
+
+function setCat(c) {
+  activeCat = c;
+  renderCats();
+  render();
+}
+
+function render() {
+  const q = document.getElementById("search").value.toLowerCase();
+
+  const list = recipes.filter(r =>
+    (activeCat === "Tất cả" || r.cat === activeCat) &&
+    (!q || r.name.toLowerCase().includes(q))
   );
 
-  if(filtered.length === 0){
-    listEl.innerHTML = "<p>Chưa có món nào.</p>";
+  const g = document.getElementById("grid");
+
+  if (!list.length) {
+    g.innerHTML = `<div class="empty"><div>🍽️</div><p>Chưa có món nào</p></div>`;
     return;
   }
 
-  listEl.innerHTML = "";
-
-  filtered.forEach(r=>{
-    const div = document.createElement("div");
-    div.className = "card";
-
-    div.innerHTML = `
-      <h3>${safe(r.name)}</h3>
-      <small>${safe(r.cat || "Khác")}</small>
-      <p>⏱ ${safe(r.time || "Không ghi")}</p>
-      <div class="actions">
-        <button onclick="viewRecipe('${r.id}')">Xem</button>
-        <button class="blue" onclick="editRecipe('${r.id}')">Sửa</button>
-        <button class="red" onclick="deleteRecipe('${r.id}')">Xóa</button>
+  g.innerHTML = list.map(r => `
+    <div class="card" onclick="viewRecipe('${r.id}')">
+      <div class="card-thumb">
+        ${
+          r.img
+            ? `<img src="${r.img}">`
+            : `<div class="emoji-ph">${r.emoji || "🍽️"}</div>`
+        }
+        ${isTiktokUrl(r.tiktok) ? `<div class="tiktok-badge">🎵</div>` : ""}
       </div>
-    `;
 
-    listEl.appendChild(div);
-  });
+      <div class="card-body">
+        <div class="card-name">${safe(r.name)}</div>
+        <div class="card-cat">${safe(r.cat || "Khác")}</div>
+        ${r.time ? `<div class="card-time">⏱ ${safe(r.time)}</div>` : ""}
+      </div>
+    </div>
+  `).join("");
 }
 
-function viewRecipe(id){
-  const r = recipes.find(x=>x.id===id);
-  if(!r) return;
+// ===== VIEW =====
+function viewRecipe(id) {
+  const r = recipes.find(x => x.id === id);
+  if (!r) return;
 
-  document.getElementById("detail").innerHTML = `
-    <h2>${safe(r.name)}</h2>
-    <p><b>Danh mục:</b> ${safe(r.cat)}</p>
-    <p><b>Thời gian:</b> ${safe(r.time || "Không ghi")}</p>
+  currentId = id;
 
-    <h3>Nguyên liệu</h3>
-    <ul>${(r.ingredients||[]).map(x=>`<li>${safe(x)}</li>`).join("")}</ul>
+  document.getElementById("vHero").innerHTML = r.img
+    ? `<div style="width:100%;aspect-ratio:16/9;overflow:hidden">
+         <img src="${r.img}" style="width:100%;height:100%;object-fit:cover">
+       </div>`
+    : `<div style="width:100%;aspect-ratio:16/9;background:var(--primary-light);display:flex;align-items:center;justify-content:center;font-size:4rem">
+         ${r.emoji || "🍽️"}
+       </div>`;
 
-    <h3>Cách làm</h3>
-    <ol>${(r.steps||[]).map(x=>`<li>${safe(x)}</li>`).join("")}</ol>
+  document.getElementById("vName").textContent = r.name;
+  document.getElementById("vTime").textContent = r.time || "—";
+  document.getElementById("vCat").textContent = r.cat || "Khác";
 
-    ${r.note ? `<h3>Ghi chú</h3><p>${safe(r.note)}</p>` : ""}
+  document.getElementById("vIngredients").innerHTML =
+    (r.ingredients || []).map(i => `<li>${safe(i)}</li>`).join("");
 
-    ${r.tiktok ? `<h3>TikTok</h3><p><a href="${safe(r.tiktok)}" target="_blank">Mở video</a></p>` : ""}
-  `;
+  document.getElementById("vSteps").innerHTML =
+    (r.steps || []).map(s => `<li>${safe(s)}</li>`).join("");
 
-  document.getElementById("modal").classList.remove("hidden");
+  const tt = document.getElementById("vTiktokSection");
+
+  if (isTiktokUrl(r.tiktok)) {
+    tt.style.display = "block";
+    document.getElementById("vTiktokBtn").href = r.tiktok;
+  } else {
+    tt.style.display = "none";
+  }
+
+  const ns = document.getElementById("vNoteSection");
+
+  if (r.note) {
+    document.getElementById("vNote").textContent = r.note;
+    ns.style.display = "";
+  } else {
+    ns.style.display = "none";
+  }
+
+  document.getElementById("viewOverlay").classList.add("open");
 }
 
-function editRecipe(id){
-  const r = recipes.find(x=>x.id===id);
-  if(!r) return;
-
-  editingId = id;
-
-  document.getElementById("formTitle").textContent = "Sửa công thức";
-  document.getElementById("saveBtn").textContent = "💾 Cập nhật";
-  document.getElementById("cancelBtn").classList.remove("hidden");
-
-  document.getElementById("name").value = r.name || "";
-  document.getElementById("cat").value = r.cat || "Món chính";
-  document.getElementById("time").value = r.time || "";
-  document.getElementById("ingredients").value = (r.ingredients||[]).join("\n");
-  document.getElementById("steps").value = (r.steps||[]).join("\n");
-  document.getElementById("note").value = r.note || "";
-  document.getElementById("tiktok").value = r.tiktok || "";
-
-  window.scrollTo({top:0, behavior:"smooth"});
+function closeOverlay(id) {
+  document.getElementById(id).classList.remove("open");
 }
 
-async function deleteRecipe(id){
-  const r = recipes.find(x=>x.id===id);
-  if(!r) return;
+function closeView(e) {
+  if (e.target.id === "viewOverlay") closeOverlay("viewOverlay");
+}
 
-  if(!confirm(`Xóa món "${r.name}" không?`)) return;
+function closeForm(e) {
+  if (e.target.id === "formOverlay") closeOverlay("formOverlay");
+}
 
-  recipes = recipes.filter(x=>x.id!==id);
-  await uploadRecipes();
+// ===== IMAGE =====
+function triggerUpload() {
+  document.getElementById("fImgFile").click();
+}
+
+function handleImg(e) {
+  const f = e.target.files[0];
+  if (!f) return;
+
+  const fr = new FileReader();
+
+  fr.onload = ev => {
+    pendingImgB64 = ev.target.result;
+    showPreview(pendingImgB64);
+  };
+
+  fr.readAsDataURL(f);
+}
+
+function showPreview(src) {
+  document.getElementById("imgPreview").src = src;
+  document.getElementById("imgPreview").style.display = "block";
+  document.getElementById("uploadHint").style.display = "none";
+  document.getElementById("btnRmImg").style.display = "inline";
+}
+
+function removeImg() {
+  pendingImgB64 = null;
+  document.getElementById("imgPreview").style.display = "none";
+  document.getElementById("imgPreview").src = "";
+  document.getElementById("uploadHint").style.display = "block";
+  document.getElementById("btnRmImg").style.display = "none";
+  document.getElementById("fImgFile").value = "";
+}
+
+// ===== FORM =====
+function openForm(id = null) {
+  editId = id;
+  pendingImgB64 = null;
+
+  document.getElementById("formTitle").textContent =
+    id ? "✏️ Sửa công thức" : "➕ Thêm món mới";
+
+  const r = id ? recipes.find(x => x.id === id) : null;
+
+  document.getElementById("fName").value = r ? r.name : "";
+  document.getElementById("fCat").value = r ? r.cat : "Món chính";
+  document.getElementById("fTime").value = r ? r.time : "";
+  document.getElementById("fTiktok").value = r ? (r.tiktok || "") : "";
+  document.getElementById("fIngredients").value = r ? (r.ingredients || []).join("\n") : "";
+  document.getElementById("fSteps").value = r ? (r.steps || []).join("\n") : "";
+  document.getElementById("fNote").value = r ? (r.note || "") : "";
+  document.getElementById("fImgFile").value = "";
+
+  if (r && r.img) {
+    pendingImgB64 = r.img;
+    showPreview(r.img);
+  } else {
+    removeImg();
+  }
+
+  updateTiktokPreview();
+  document.getElementById("formOverlay").classList.add("open");
+}
+
+function editCurrent() {
+  closeOverlay("viewOverlay");
+  openForm(currentId);
+}
+
+async function deleteCurrent() {
+  if (!confirm("Xóa món này?")) return;
+
+  recipes = recipes.filter(r => r.id !== currentId);
+  await syncSave();
   render();
+  closeOverlay("viewOverlay");
 }
 
-function cancelEdit(){
-  clearForm();
+async function saveRecipe() {
+  const name = document.getElementById("fName").value.trim();
+
+  if (!name) {
+    showToast("⚠️ Nhập tên món!");
+    return;
+  }
+
+  const ing = document.getElementById("fIngredients").value
+    .split("\n")
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  const stp = document.getElementById("fSteps").value
+    .split("\n")
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  if (!ing.length) {
+    showToast("⚠️ Nhập nguyên liệu!");
+    return;
+  }
+
+  if (!stp.length) {
+    showToast("⚠️ Nhập cách làm!");
+    return;
+  }
+
+  const tt = document.getElementById("fTiktok").value.trim();
+
+  const data = {
+    id: editId || "r" + Date.now(),
+    img: pendingImgB64 || null,
+    emoji: "🍽️",
+    name,
+    cat: document.getElementById("fCat").value,
+    time: document.getElementById("fTime").value.trim(),
+    tiktok: isTiktokUrl(tt) ? tt : "",
+    ingredients: ing,
+    steps: stp,
+    note: document.getElementById("fNote").value.trim()
+  };
+
+  if (editId) {
+    const i = recipes.findIndex(r => r.id === editId);
+    if (i !== -1) recipes[i] = data;
+  } else {
+    recipes.unshift(data);
+  }
+
+  await syncSave();
+  render();
+  closeOverlay("formOverlay");
 }
 
-function clearForm(){
-  editingId = null;
-
-  document.getElementById("formTitle").textContent = "Thêm món mới";
-  document.getElementById("saveBtn").textContent = "💾 Lưu công thức";
-  document.getElementById("cancelBtn").classList.add("hidden");
-
-  document.getElementById("name").value = "";
-  document.getElementById("cat").value = "Món chính";
-  document.getElementById("time").value = "";
-  document.getElementById("ingredients").value = "";
-  document.getElementById("steps").value = "";
-  document.getElementById("note").value = "";
-  document.getElementById("tiktok").value = "";
-}
-
-function closeModal(){
-  document.getElementById("modal").classList.add("hidden");
-}
-
-function safe(text){
+// ===== SAFE HTML =====
+function safe(text) {
   return String(text || "")
-    .replaceAll("&","&amp;")
-    .replaceAll("<","&lt;")
-    .replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;")
-    .replaceAll("'","&#039;");
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
-loadRecipes();
+startApp();
 </script>
-
-</body>
-</html>
